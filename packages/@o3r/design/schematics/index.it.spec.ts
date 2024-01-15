@@ -15,11 +15,11 @@ let appFolderPath: string;
 describe('new otter application with Design', () => {
   setupLocalRegistry();
   beforeAll(async () => {
-    appFolderPath = await prepareTestEnv(appName, 'angular-with-o3r-core');
+    appFolderPath = (await prepareTestEnv(appName)).appPath;
     execAppOptions.cwd = appFolderPath;
   });
   test('should add design to existing application', () => {
-    packageManagerExec(`ng add --skip-confirmation @o3r/design@${o3rVersion}`, execAppOptions);
+    packageManagerExec(`ng add @o3r/design@${o3rVersion} --skip-confirmation`, execAppOptions);
 
     expect(() => packageManagerInstall(execAppOptions)).not.toThrow();
     expect(() => packageManagerRun('build', execAppOptions)).not.toThrow();

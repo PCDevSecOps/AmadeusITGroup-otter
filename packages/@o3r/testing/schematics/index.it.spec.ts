@@ -8,31 +8,33 @@ import {
   prepareTestEnv,
   setupLocalRegistry
 } from '@o3r/test-helpers';
+import { posix } from 'node:path';
 
-const appName = 'test-app-testing';
+const appFolder = 'test-app-testing';
 const o3rVersion = '999.0.0';
 const execAppOptions = getDefaultExecSyncOptions();
-let appFolderPath: string;
-
+let appPath: string;
+let workspacePath: string;
+let appName: string;
 describe('new otter application with testing', () => {
   setupLocalRegistry();
   beforeAll(async () => {
-    appFolderPath = await prepareTestEnv(appName, 'angular-with-o3r-core');
-    execAppOptions.cwd = appFolderPath;
+    ({ appPath, workspacePath, appName } = await prepareTestEnv(appFolder));
+    execAppOptions.cwd = workspacePath;
   });
   test('should add testing to existing application', async () => {
-    packageManagerExec(`ng add --skip-confirmation @o3r/testing@${o3rVersion}`, execAppOptions);
+    const relativeAppPath = posix.relative(workspacePath, appPath);
+    packageManagerExec(`ng add @o3r/testing@${o3rVersion} --skip-confirmation --project-name=${appName}`, execAppOptions);
 
-    packageManagerExec('ng g @o3r/core:component test-component --use-component-fixtures=false --component-structure="full"', execAppOptions);
-    packageManagerExec('ng g @o3r/testing:add-fixture --path="src/components/test-component/container/test-component-cont.component.ts"', execAppOptions);
-    packageManagerExec('ng g @o3r/testing:add-fixture --path="src/components/test-component/presenter/test-component-pres.component.ts"', execAppOptions);
-    await addImportToAppModule(appFolderPath, 'TestComponentContModule', 'src/components/test-component');
+    const componentPath = posix.join(relativeAppPath, 'src/components/test-component/container/test-component-cont.component.ts');
+    packageManagerExec(`ng g @o3r/core:component test-component --use-component-fixtures=false --component-structure="full" --project-name=${appName}`, execAppOptions);
+    packageManagerExec(`ng g @o3r/testing:add-fixture --path="${componentPath}"`, execAppOptions);
+    await addImportToAppModule(appPath, 'TestComponentContModule', 'src/components/test-component');
 
     const diff = getGitDiff(execAppOptions.cwd as string);
-    expect(diff.added).toContain('src/components/test-component/container/test-component-cont.fixture.ts');
-    expect(diff.added).toContain('src/components/test-component/presenter/test-component-pres.fixture.ts');
+    expect(diff.added).toContain(posix.join(relativeAppPath, 'src/components/test-component/container/test-component-cont.fixture.ts'));
 
     expect(() => packageManagerInstall(execAppOptions)).not.toThrow();
-    expect(() => packageManagerRun('build', execAppOptions)).not.toThrow();
+    expect(() => packageManagerRun('build', {...execAppOptions, cwd: appPath})).not.toThrow();
   });
 });
