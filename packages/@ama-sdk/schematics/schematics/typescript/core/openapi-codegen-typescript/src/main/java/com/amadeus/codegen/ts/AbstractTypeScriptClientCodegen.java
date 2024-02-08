@@ -147,6 +147,7 @@ public abstract class AbstractTypeScriptClientCodegen extends DefaultCodegen imp
     additionalProperties.put("propertyDeclaration", new LambdaHelper.PropertyDeclaration());
     additionalProperties.put("propertyAccess", new LambdaHelper.PropertyAccess());
     additionalProperties.put("headerJsonMimeType", new LambdaHelper.HeaderJsonMimeType());
+    additionalProperties.put("reviversRequired", Boolean.TRUE);
   }
 
   private static class CamelizeLambda extends LambdaHelper.CustomLambda {
@@ -715,6 +716,38 @@ public abstract class AbstractTypeScriptClientCodegen extends DefaultCodegen imp
     }
     for (Map.Entry<String, ModelsMap> entry : objs.entrySet()) {
       entry.setValue(this.postProcessImports(entry.getValue()));
+    }
+    Boolean reviversRequired = Boolean.FALSE;
+    for (Map.Entry<String, ModelsMap> entry : objs.entrySet()) {
+      ModelsMap modelsMap = entry.getValue();
+      for (ModelMap modelMap : modelsMap.getModels()) {
+        CodegenModel model = modelMap.getModel();
+        if (!model.isEnum) {
+          if (Boolean.TRUE.equals(model.vendorExtensions.get("requireDictionary"))) {
+            reviversRequired = Boolean.TRUE;
+            break;
+          } else {
+            for (CodegenProperty var : model.allVars) {
+              if (!(var.isPrimitiveType || var.complexType != null || var.isEnum || var.isEnumRef)) {
+                reviversRequired = Boolean.TRUE;
+                break;
+              }
+            }
+            if (reviversRequired) {
+              break;
+            }
+          }
+          if (reviversRequired) {
+            break;
+          }
+        }
+      }
+      if (reviversRequired) {
+        break;
+      }
+    }
+    if (!reviversRequired) {
+      additionalProperties.put("reviversRequired", Boolean.FALSE);
     }
     return objs;
   }
